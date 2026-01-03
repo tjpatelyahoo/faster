@@ -352,11 +352,6 @@ async def fast_download(url, name):
     
     return None
 
-https://media-cdn.classplusapp.com/986231/cc/49626dad-7156-49d3-a3ad-60f2a5ead390/playlist.m3u8?key=171882878&hdnts=URLPrefix=aHR0cHM6Ly9tZWRpYS1jZG4uY2xhc3NwbHVzYXBwLmNvbS85ODYyMzEvY2MvNDk2MjZkYWQtNzE1Ni00OWQzLWEzYWQtNjBmMmE1ZWFkMzkw~Expires=1767450637~hmac=212f20feea1d70dc73edee5ad8be29b57884b94d6d0a379565686779da9f2769&userIds=171882878"
-}
-
-
-
 async def send_vid(bot: Client, m: Message, cc, filename, thumb, name, prog, channel_id, watermark="𝐈𝐓'𝐬𝐆𝐎𝐋𝐔", topic_thread_id: int = None):
     try:
         temp_thumb = None  # ✅ Ensure this is always defined for later cleanup
