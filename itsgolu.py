@@ -353,56 +353,53 @@ async def fast_download(url, name):
     return None
 
 async def download_video(url, cmd, name):
-    retry_count = 0
     max_retries = 2
 
-    while retry_count < max_retries:
-
-        
+    # ---------- 1️⃣ TRY aria2 FIRST ----------
+    for attempt in range(max_retries):
         download_cmd = (
-    f'{cmd} '
-    f'-R 10 --fragment-retries 10 '
-    f'--external-downloader aria2c '
-    f'--downloader-args "aria2c: '
-    f'-x 3 -s 3 -j 1 '
-    f'--timeout=60 '
-    f'--connect-timeout=30 '
-    f'--retry-wait=5 '
-    f'--file-allocation=none"'
-)
+            f'{cmd} '
+            f'-R 5 --fragment-retries 5 '
+            f'--external-downloader aria2c '
+            f'--downloader-args "aria2c: '
+            f'-x 3 -s 3 -j 1 '
+            f'--timeout=60 '
+            f'--connect-timeout=30 '
+            f'--retry-wait=5 '
+            f'--file-allocation=none"'
+        )
 
-        print(download_cmd)
-        logging.info(download_cmd)
-
+        print(f"[aria2] Attempt {attempt+1}: {download_cmd}")
         k = subprocess.run(download_cmd, shell=True)
 
-        if k.returncode == 0:
-            break  # success
-
-        retry_count += 1
-        print(f"⚠️ Download failed (attempt {retry_count}/{max_retries}), retrying in 5s...")
-        await asyncio.sleep(5)
-
-    try:
-        if os.path.isfile(name):
+        # ✅ success
+        if k.returncode == 0 and os.path.exists(name):
             return name
-        elif os.path.isfile(f"{name}.webm"):
-            return f"{name}.webm"
-        name = name.split(".")[0]
-        if os.path.isfile(f"{name}.mkv"):
-            return f"{name}.mkv"
-        elif os.path.isfile(f"{name}.mp4"):
-            return f"{name}.mp4"
-        elif os.path.isfile(f"{name}.mp4.webm"):
-            return f"{name}.mp4.webm"
 
-        return name + ".mp4"
-    except Exception as exc:
-        logging.error(f"Error checking file: {exc}")
-        return name 
+        print(f"⚠️ aria2 failed (attempt {attempt+1}), retrying...")
+        await asyncio.sleep(3)
 
+    # ---------- 2️⃣ FALLBACK TO ffmpeg ----------
+    print("🔁 Falling back to ffmpeg for HLS download")
 
+    ffmpeg_cmd = (
+        f'{cmd} '
+        f'--hls-prefer-ffmpeg '
+        f'--no-keep-video'
+    )
 
+    print(f"[ffmpeg] {ffmpeg_cmd}")
+    k = subprocess.run(ffmpeg_cmd, shell=True)
+
+    # ---------- 3️⃣ FINAL CHECK ----------
+    if os.path.exists(name):
+        return name
+    elif os.path.exists(f"{name}.mp4"):
+        return f"{name}.mp4"
+    elif os.path.exists(f"{name}.webm"):
+        return f"{name}.webm"
+
+    raise Exception("❌ Download failed with both aria2 and ffmpeg")
 
 
 async def send_vid(bot: Client, m: Message, cc, filename, thumb, name, prog, channel_id, watermark="𝐈𝐓'𝐬𝐆𝐎𝐋𝐔", topic_thread_id: int = None):
