@@ -352,85 +352,8 @@ async def fast_download(url, name):
     
     return None
 
-async def download_video(url, cmd, name):
-    max_retries = 2
-
-    # 🔴 EARLY HLS DETECTION → USE FFMPEG DIRECTLY
-    if ".m3u8" in cmd:
-        print("🎬 HLS detected → using ffmpeg directly")
-
-        ffmpeg_cmd = (
-            f'{cmd} '
-            f'--hls-prefer-ffmpeg '
-            f'--no-keep-video'
-        )
-
-        print(f"[ffmpeg] {ffmpeg_cmd}")
-        subprocess.run(ffmpeg_cmd, shell=True)
-
-        # ✅ FINAL CHECK (ffmpeg)
-        if os.path.exists(name):
-            return name
-        elif os.path.exists(f"{name}.mp4"):
-            return f"{name}.mp4"
-        elif os.path.exists(f"{name}.webm"):
-            return f"{name}.webm"
-
-        raise Exception("❌ ffmpeg HLS download failed")
-
-    # ---------- 🟢 NON-HLS → TRY aria2 FIRST ----------
-    for attempt in range(max_retries):
-        download_cmd = (
-            f'{cmd} '
-            f'-R 5 --fragment-retries 5 '
-            f'--external-downloader aria2c '
-            f'--downloader-args "aria2c: '
-            f'-x 3 -s 3 -j 1 '
-            f'--timeout=60 '
-            f'--connect-timeout=30 '
-            f'--retry-wait=5 '
-            f'--file-allocation=none"'
-        )
-
-        print(f"[aria2] Attempt {attempt + 1}: {download_cmd}")
-        k = subprocess.run(download_cmd, shell=True)
-
-        # ✅ SUCCESS CHECK (aria2)
-        if (
-            os.path.exists(name)
-            or os.path.exists(f"{name}.mp4")
-            or os.path.exists(f"{name}.webm")
-        ):
-            return (
-                name if os.path.exists(name)
-                else f"{name}.mp4" if os.path.exists(f"{name}.mp4")
-                else f"{name}.webm"
-            )
-
-        print(f"⚠️ aria2 failed (attempt {attempt + 1}), retrying...")
-        await asyncio.sleep(3)
-
-    # ---------- 🔁 FINAL FALLBACK → FFMPEG ----------
-    print("🔁 aria2 failed → falling back to ffmpeg")
-
-    ffmpeg_cmd = (
-        f'{cmd} '
-        f'--hls-prefer-ffmpeg '
-        f'--no-keep-video'
-    )
-
-    print(f"[ffmpeg] {ffmpeg_cmd}")
-    subprocess.run(ffmpeg_cmd, shell=True)
-
-    # ---------- ✅ FINAL CHECK ----------
-    if os.path.exists(name):
-        return name
-    elif os.path.exists(f"{name}.mp4"):
-        return f"{name}.mp4"
-    elif os.path.exists(f"{name}.webm"):
-        return f"{name}.webm"
-
-    raise Exception("❌ Download failed with both aria2 and ffmpeg")
+https://media-cdn.classplusapp.com/986231/cc/49626dad-7156-49d3-a3ad-60f2a5ead390/playlist.m3u8?key=171882878&hdnts=URLPrefix=aHR0cHM6Ly9tZWRpYS1jZG4uY2xhc3NwbHVzYXBwLmNvbS85ODYyMzEvY2MvNDk2MjZkYWQtNzE1Ni00OWQzLWEzYWQtNjBmMmE1ZWFkMzkw~Expires=1767450637~hmac=212f20feea1d70dc73edee5ad8be29b57884b94d6d0a379565686779da9f2769&userIds=171882878"
+}
 
 
 
