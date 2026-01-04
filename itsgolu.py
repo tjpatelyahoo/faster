@@ -358,29 +358,60 @@ async def download_video(url, cmd, name):
     import uuid
     import subprocess
     import asyncio
+    import time
+    import signal
 
-    # unique temp dir per video (CRITICAL FIX)
     tmp_dir = f".tmp_{uuid.uuid4().hex}"
     os.makedirs(tmp_dir, exist_ok=True)
 
+    def file_size_ok():
+        for ext in ("mp4", "mkv", "webm"):
+            f = f"{name}.{ext}"
+            if os.path.exists(f) and os.path.getsize(f) > 1024 * 1024:
+                return f
+        return None
+
     try:
-        # ---------- 1️⃣ aria2 FIRST ----------
+        # ---------- 1️⃣ TRY aria2 ----------
         aria_cmd = (
             f'{cmd} "{url}" '
             f'-o "{name}.%(ext)s" '
             f'--external-downloader aria2c '
-            f'--downloader-args "aria2c:-x 4 -s 4 -j 1 --file-allocation=none" '
+            f'--downloader-args "aria2c:-x 2 -s 2 -j 1 '
+            f'--timeout=20 --connect-timeout=10 --file-allocation=none" '
             f'--paths "temp:{tmp_dir}"'
         )
 
-        k = subprocess.run(aria_cmd, shell=True)
+        proc = subprocess.Popen(
+            aria_cmd,
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
-        if k.returncode == 0:
-            for ext in ("mp4", "mkv", "webm"):
-                if os.path.exists(f"{name}.{ext}"):
-                    return f"{name}.{ext}"
+        start = time.time()
+        stalled = True
 
-        # ---------- 2️⃣ ffmpeg FALLBACK ----------
+        # wait up to 40 seconds for progress
+        while time.time() - start < 40:
+            if proc.poll() is not None:
+                break
+            if file_size_ok():
+                stalled = False
+                proc.wait()
+                break
+            await asyncio.sleep(3)
+
+        # kill aria2 if stalled / timeout
+        if proc.poll() is None:
+            proc.kill()
+
+        if not stalled:
+            result = file_size_ok()
+            if result:
+                return result
+
+        # ---------- 2️⃣ FALLBACK TO ffmpeg ----------
         ffmpeg_cmd = (
             f'{cmd} "{url}" '
             f'-o "{name}.%(ext)s" '
@@ -391,17 +422,16 @@ async def download_video(url, cmd, name):
 
         k = subprocess.run(ffmpeg_cmd, shell=True)
 
-        if k.returncode == 0:
-            for ext in ("mp4", "mkv", "webm"):
-                if os.path.exists(f"{name}.{ext}"):
-                    return f"{name}.{ext}"
+        result = file_size_ok()
+        if k.returncode == 0 and result:
+            return result
 
         # ---------- 3️⃣ FAILURE ----------
         raise Exception("Download failed (aria2 + ffmpeg)")
 
     finally:
-        # ALWAYS clean temp dir
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
 
 
 async def send_vid(bot: Client, m: Message, cc, filename, thumb, name, prog, channel_id, watermark="𝐈𝐓'𝐬𝐆𝐎𝐋𝐔", topic_thread_id: int = None):
