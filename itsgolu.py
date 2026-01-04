@@ -393,7 +393,7 @@ async def download_video(url, cmd, name):
 
     ffmpeg_cmd = (
         f'{cmd} "{url}" '
-        f'-o "{name}.mp4" '
+        f'-o "{name}.%(ext)s" '
         f'--hls-prefer-ffmpeg '
         f'--no-keep-video'
     )
