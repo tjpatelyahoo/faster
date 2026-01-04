@@ -354,25 +354,26 @@ async def fast_download(url, name):
 
 async def download_video(url, cmd, name):
     """
-    ffmpeg-only HLS download
-    Safe for ClassPlus tokenized streams
+    ffmpeg-only HLS downloader
+    URL is passed ONCE
+    Output name is fixed ONCE
     """
 
     print("🎬 HLS detected → using ffmpeg only (safe mode)")
 
     ffmpeg_cmd = (
-        f'{cmd} "{url}" '
-        f'--hls-prefer-ffmpeg '
-        f'--merge-output-format mp4 '
-        f'--no-part '
-        f'-f "bv*+ba/b" '
+        'yt-dlp '
+        '--hls-prefer-ffmpeg '
+        '--merge-output-format mp4 '
+        '--no-part '
+        '-f "bv*+ba/b" '
+        f'"{url}" '
         f'-o "{name}.mp4"'
     )
 
     print(f"[ffmpeg] {ffmpeg_cmd}")
     k = subprocess.run(ffmpeg_cmd, shell=True)
 
-    # ---- final verification ----
     if k.returncode == 0 and os.path.exists(f"{name}.mp4"):
         return f"{name}.mp4"
 
