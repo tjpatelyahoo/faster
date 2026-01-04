@@ -353,85 +353,30 @@ async def fast_download(url, name):
     return None
 
 async def download_video(url, cmd, name):
-    import os
-    import shutil
-    import uuid
-    import subprocess
-    import asyncio
-    import time
-    import signal
+    """
+    ffmpeg-only HLS download
+    Safe for ClassPlus tokenized streams
+    """
 
-    tmp_dir = f".tmp_{uuid.uuid4().hex}"
-    os.makedirs(tmp_dir, exist_ok=True)
+    print("🎬 HLS detected → using ffmpeg only (safe mode)")
 
-    def file_size_ok():
-        for ext in ("mp4", "mkv", "webm"):
-            f = f"{name}.{ext}"
-            if os.path.exists(f) and os.path.getsize(f) > 1024 * 1024:
-                return f
-        return None
+    ffmpeg_cmd = (
+        f'{cmd} "{url}" '
+        f'--hls-prefer-ffmpeg '
+        f'--merge-output-format mp4 '
+        f'--no-part '
+        f'-f "bv*+ba/b" '
+        f'-o "{name}.mp4"'
+    )
 
-    try:
-        # ---------- 1️⃣ TRY aria2 ----------
-        aria_cmd = (
-            f'{cmd} "{url}" '
-            f'-o "{name}.%(ext)s" '
-            f'--external-downloader aria2c '
-            f'--downloader-args "aria2c:-x 2 -s 2 -j 1 '
-            f'--timeout=20 --connect-timeout=10 --file-allocation=none" '
-            f'--paths "temp:{tmp_dir}"'
-        )
+    print(f"[ffmpeg] {ffmpeg_cmd}")
+    k = subprocess.run(ffmpeg_cmd, shell=True)
 
-        proc = subprocess.Popen(
-            aria_cmd,
-            shell=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+    # ---- final verification ----
+    if k.returncode == 0 and os.path.exists(f"{name}.mp4"):
+        return f"{name}.mp4"
 
-        start = time.time()
-        stalled = True
-
-        # wait up to 40 seconds for progress
-        while time.time() - start < 40:
-            if proc.poll() is not None:
-                break
-            if file_size_ok():
-                stalled = False
-                proc.wait()
-                break
-            await asyncio.sleep(3)
-
-        # kill aria2 if stalled / timeout
-        if proc.poll() is None:
-            proc.kill()
-
-        if not stalled:
-            result = file_size_ok()
-            if result:
-                return result
-
-        # ---------- 2️⃣ FALLBACK TO ffmpeg ----------
-        ffmpeg_cmd = (
-            f'{cmd} "{url}" '
-            f'-o "{name}.%(ext)s" '
-            f'--hls-prefer-ffmpeg '
-            f'--no-keep-video '
-            f'--paths "temp:{tmp_dir}"'
-        )
-
-        k = subprocess.run(ffmpeg_cmd, shell=True)
-
-        result = file_size_ok()
-        if k.returncode == 0 and result:
-            return result
-
-        # ---------- 3️⃣ FAILURE ----------
-        raise Exception("Download failed (aria2 + ffmpeg)")
-
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-
+    raise Exception("❌ ffmpeg HLS download failed")
 
 
 async def send_vid(bot: Client, m: Message, cc, filename, thumb, name, prog, channel_id, watermark="𝐈𝐓'𝐬𝐆𝐎𝐋𝐔", topic_thread_id: int = None):
