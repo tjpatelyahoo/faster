@@ -786,8 +786,9 @@ async def txt_handler(bot: Client, m: Message):
             elif any(x in url for x in ["https://cpvod.testbook.com/", "classplusapp.com/drm/", "media-cdn.classplusapp.com", "media-cdn-alisg.classplusapp.com", "media-cdn-a.classplusapp.com", "tencdn.classplusapp", "videos.classplusapp", "webvideos.classplusapp.com"]):
                 # normalize cpvod -> media-cdn path used by API
                 url_norm = url.replace("https://cpvod.testbook.com/", "https://media-cdn.classplusapp.com/drm/")
+                api_url_call = f"https://head-micheline-botupdatevip-f1804c58.koyeb.app/get_keys?url={url}@botupdatevip4u&user_id=741668895&token=741Pp484kdyuT7vFWqr"
                 #api_url_call = f"https://shefu-api-final.vercel.app/shefu?url={url}@crystalofficial2&user_id={user_id}"
-                api_url_call = f"https://shefu-api-final.vercel.app/shefu?url={url_norm}@ITSGOLU_FORCE&user_id=6243077977"
+                #api_url_call = f"https://shefu-api-final.vercel.app/shefu?url={url_norm}@ITSGOLU_FORCE&user_id=6243077977"
                 #api_url_call = f"https://itsgolu-cp-api.vercel.app/itsgolu?url={url_norm}@ITSGOLU_OFFICIAL&user_id={user_id}"
                 keys_string = ""
                 mpd = None
